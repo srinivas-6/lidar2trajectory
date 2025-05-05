@@ -1,0 +1,9 @@
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+data/
+*.txt
+wandb/
+.vscode/
+__pycache__/
