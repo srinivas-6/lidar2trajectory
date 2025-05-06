@@ -55,3 +55,5 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 * Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) input
 
 ### Trajectory Plots 
+
+TBD
