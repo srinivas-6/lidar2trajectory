@@ -162,6 +162,7 @@ def main(args):
         # Evaluation loop 
         preds = []
         targets = []
+        stats = np.zeros((len(dataloader.dataset), 3))
         with torch.no_grad():
             for batch_idx, batch_sample in enumerate((dataloader)):
                 lidar_bev_tensor, target = batch_sample
@@ -171,8 +172,19 @@ def main(args):
                 output = model(lidar_bev_tensor)
                 est_pose = output.get('pose')
                 toc = time.time()
-                preds.append(est_pose.cpu().numpy())
-                targets.append(target.cpu().numpy())
+                est_pose = est_pose.detach().cpu().numpy()
+                target = target.detach().cpu().numpy()
+                posit_err, orient_err = pose_err(torch.from_numpy(est_pose), torch.from_numpy(target))
+                preds.append(est_pose)
+                targets.append(target)
+                stats[batch_idx, 0] = posit_err.item()
+                stats[batch_idx, 1] = orient_err.item()
+                stats[batch_idx, 2] = (toc - tic)*1000
+                print(("Pose error: {:.3f}[m], {:.3f}[deg], inferred in {:.2f}[ms]".format(
+                    stats[batch_idx, 0],  stats[batch_idx, 1],  stats[batch_idx, 2])))
+            wandb.log({'Median pose error [m]': np.nanmedian(stats[:, 0])})
+            wandb.log({'Median orient error [deg]': np.nanmedian(stats[:, 1])})
+            wandb.log({'inference time': np.mean(stats[:, 2])})
 
         # write the predictions to a txt file
         pred_file = os.path.join(args.data_path, "predictions.txt")
@@ -188,13 +200,14 @@ def main(args):
                 f.write(f"{target}\n")
                 f.write("\n")
         print(f"Targets saved to {target_file}")
-        # TODO: Compute the errors
-        posit_err, orient_err = pose_err(torch.tensor(preds), torch.tensor(targets))
-        print(f"Position Error: {posit_err.mean().item()} m")
-        print(f"Orientation Error: {orient_err.mean().item()} degrees")
-        wandb.log({'position_error': posit_err.mean().item()})
-        wandb.log({'orientation_error': orient_err.mean().item()})
-        wandb.log({'inference_time': (toc - tic) * 1000})
+                # Record overall statistics
+        print("Performance of {}".format(args.load_checkpoint))
+        print("Median pose error: {:.3f}[m], {:.3f}[deg]".format(np.nanmedian(stats[:, 0]), np.nanmedian(stats[:, 1])))
+        print("Mean inference time:{:.2f}[ms]".format(np.mean(stats[:, 2])))
+        print(" Mean pose error: {:.3f}[m], {:.3f}[deg]".format(
+                    np.nanmean(stats[:, 0]),  np.nanmean(stats[:, 1])))
+        
+
                 
 
 if __name__ == "__main__":
