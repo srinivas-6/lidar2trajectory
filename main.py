@@ -178,15 +178,13 @@ def main(args):
         pred_file = os.path.join(args.data_path, "predictions.txt")
         with open(pred_file, 'w') as f:
             for pred in preds:
-                f.write(f"{pred}\n")
-                f.write("\n")
+                f.write(str(pred[0][0]) + ',' + str(pred[0][1]) + '\n')
         print(f"Predictions saved to {pred_file}")
         # write the targets to a txt file
         target_file = os.path.join(args.data_path, "targets.txt")
         with open(target_file, 'w') as f:
             for target in targets:
-                f.write(f"{target}\n")
-                f.write("\n")
+               f.write(str(target[0][0]) + ',' + str(target[0][1]) + '\n')
         print(f"Targets saved to {target_file}")
         # TODO: Compute the errors
         posit_err, orient_err = pose_err(torch.tensor(preds), torch.tensor(targets))
