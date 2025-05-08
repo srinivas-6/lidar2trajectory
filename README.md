@@ -45,14 +45,16 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 
 ### 🚀 Experiment Summary
 
-| Input      | Epochs | Model Checkpoint       | Weights & Biases Run        | Median Translation Error (m) | Median Orientation Error (deg) |
+| Input      | Lookahead prediction | Model Checkpoint       | Weights & Biases Run        | Median Translation Error (m) | Median Orientation Error (deg) |
 |------------------|--------|-------------------------|------------------------------|------------------------|--------------------------|
-| LiDAR BEV (t)                | 30     | [checkpoint_checkpoint-30.pth ](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing)       | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/tt9mjdu4?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/7x49qygr?nw=nwuserravuri)    | 0.331                   | 0.621         |
-| LiDAR BEV (t)        | 50     | [checkpoint_checkpoint-50.pth](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/pluylpbz?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/hh4zzwdh?nw=nwuserravuri)   | 0.166                  | 0.265                    |
-| LiDAR BEV (t-1, t, t+1)      | TBD     | TBD | TBD | TBD                | TBD                    |
+| LiDAR BEV      | t+3 sec     | [checkpoint_final_t+3.pth](https://drive.google.com/file/d/1AeXCR1ehoYeTKQPjb-EUnZY5KyqzUjWL/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/bdvjoxuw?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/yka7ak4l?nw=nwuserravuri) | 7.50                | 4.73                   |
+| LiDAR BEV         | t+1 sec     | [checkpoint_final_t+1.pth](https://drive.google.com/file/d/1u2fav3xtP3D-kV3d7oWDYlK-StANP_FO/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/t3vas6y6?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/yjzgr3si?nw=nwuserravuri)   | 2.0                  | 1.1                    |
+| LiDAR BEV                 | t sec    | [checkpoint_final_t.pth ](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing)       | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/tt9mjdu4?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/7x49qygr?nw=nwuserravuri)    | 0.331                   | 0.621         |
+| Temporal LiDAR BEV    | TBD     | TBD | TBD | TBD                | TBD                    |
 
 ### TODO
-* Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) input
+* Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) temporal sequences as input
+* A deeper backbone like EfficientNetB3
 
 ### Trajectory Plots 
 
