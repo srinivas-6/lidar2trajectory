@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from typing import Dict, List, Tuple
 
@@ -22,7 +24,8 @@ class SemanticKITTIDataset(Dataset):
         self.transforms = transforms.get('lidar')
         self.poses = self._load_poses()
         self.lidar_files = sorted(list((self.data_path / "velodyne").glob("*.bin")))
-
+        self.mean , self.std = None, None
+        self.num_past_frames = num_past_frames
         # Ensure split ratios sum to 1.0
         assert sum(split_ratios) == 1.0, "Split ratios must sum to 1.0"
         total_files = len(self.lidar_files)
@@ -30,15 +33,22 @@ class SemanticKITTIDataset(Dataset):
         if mode == "train":
             self.lidar_files = self.lidar_files[:train_end]
             self.poses = self.poses[:train_end]
+            self.mean, self.std = self.compute_translation_stats(self.poses, lookahead=self.lookahead)
         elif mode == "test":
             self.lidar_files = self.lidar_files[train_end:]
             self.poses = self.poses[train_end:]
+            print('......... Loading pose stats from file ..........')
+            stats = np.load(self.data_path / "pose_stats.npz")
+            self.mean = stats["mean"].astype(np.float32)
+            self.std = stats["std"].astype(np.float32)
+            print(f'Loaded mean: {self.mean}, std: {self.std}')
         else:
             raise ValueError("Invalid mode. Must be 'train' or 'test'.")
 
     def _load_poses(self) -> np.ndarray:
         calib = self._parse_calibration(self.data_path / "calib.txt")
-        return self._parse_poses(self.data_path / "poses.txt", calib)
+        poses = self._parse_poses(self.data_path / "poses.txt", calib)
+        return poses
 
     @staticmethod
     def _parse_calibration(filename: Path) -> Dict[str, np.ndarray]:
@@ -66,7 +76,8 @@ class SemanticKITTIDataset(Dataset):
             pose[1, 0:4] = values[4:8]
             pose[2, 0:4] = values[8:12]
             pose[3, 3] = 1.0
-            poses.append(np.matmul(tr_inv, np.matmul(pose, cab_tr), dtype=np.float32))
+            pose = tr_inv @ pose @ cab_tr
+            poses.append(pose.astype(np.float32))
         return np.array(poses, dtype=np.float32)
 
     @staticmethod
@@ -78,12 +89,28 @@ class SemanticKITTIDataset(Dataset):
     def yaw_to_quaternion(yaw):
         q_w = np.cos(yaw / 2)
         q_z = np.sin(yaw / 2)
-        return np.array([q_w, 0, 0, q_z])
-
+        return np.array([q_w, 0, 0, q_z], dtype=np.float32)  # (qw, qx, qy, qz)
+    
+    def compute_translation_stats(self, poses: np.ndarray, lookahead: int = 30):
+        translations = []
+        for i in tqdm(range(len(poses) - lookahead)):
+            current_pose = poses[i]
+            target_pose = poses[i + lookahead]
+            relative = np.linalg.inv(current_pose) @ target_pose
+            translation = relative[:3, 3]
+            translations.append(translation)
+        translations = np.stack(translations)
+        mean = translations.mean(axis=0)
+        std = translations.std(axis=0)
+        print(f"[RESULT] Mean: {mean}, Std: {std}")
+        if not (self.data_path / "pose_stats.npz").exists():
+            np.savez(self.data_path / "pose_stats.npz", mean=mean, std=std)
+            print(f"[SAVED] pose_stats.npz to {self.data_path}")
+        return mean, std
+    
     def __len__(self) -> int:
         return len(self.lidar_files) - self.lookahead
     
-
     def encode_lidar_to_bev_image(self,
         lidar: np.ndarray,
         x_range=(-32.0, 32.0),
@@ -197,21 +224,31 @@ class SemanticKITTIDataset(Dataset):
         return features
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        # load lidar data
         lidar_data = self._load_lidar(self.lidar_files[idx])
         lidar_bev_tensor = self.encode_lidar_to_bev_image(lidar_data)
         lidar_bev_tensor = torch.from_numpy(lidar_bev_tensor).permute(2, 0, 1).contiguous()
+        # apply transforms if any
         if self.transforms:
             lidar_bev_tensor = self.transforms(lidar_bev_tensor)
+        # load pose data
         current_pose = self.poses[idx]
         target_pose = self.poses[idx + self.lookahead]
-        # get relative pose from current to target which contain x,y,z,yaw
+        # get relative pose from current to target 
         relative_pose = np.linalg.inv(current_pose) @ target_pose
         # Extract relative translation
-        delta_x = relative_pose[0, 3]
-        delta_y = relative_pose[1, 3]
-        delta_z = relative_pose[2, 3]
+        delta_xyz = np.array([relative_pose[0, 3],
+                              relative_pose[1, 3],
+                                relative_pose[2, 3]
+                              ], dtype=np.float32)
+        # Normalize translation
+        delta_xyz_norm = (delta_xyz - self.mean) / self.std
+        # Extract yaw angle
+        # yaw is the rotation around the z-axis
         delta_yaw = np.arctan2(relative_pose[1, 0], relative_pose[0, 0])
         quaternion = self.yaw_to_quaternion(delta_yaw)
-        
-        target = torch.tensor([delta_x, delta_y, delta_z, *quaternion], dtype=torch.float32)  # (x, y, z, qw, qz)
-        return lidar_bev_tensor, target
+        #ensure unit norm 
+        quaternion /= np.linalg.norm(quaternion)
+        # Final target: normalized [x, y] + quaternion
+        target = torch.tensor([*delta_xyz_norm, *quaternion], dtype=torch.float32)
+        return lidar_bev_tensor.float(), target
