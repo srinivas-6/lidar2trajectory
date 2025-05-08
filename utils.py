@@ -73,20 +73,23 @@ def visualize_lidar_histogram(lidar_features: np.ndarray, title: str = "LiDAR Hi
     plt.show()
 
 
-def pose_err(est_pose, gt_pose):
+def pose_err(est_pose, gt_pose, mean, std):
     """
     Calculate the position and orientation error given the estimated and ground truth pose(s
     :param est_pose: (torch.Tensor) a batch of estimated poses (Nx3, N is the batch size)
     :param gt_pose: (torch.Tensor) a batch of ground-truth poses (Nx3, N is the batch size)
+    :param mean: (float) mean value for denormalization
+    :param std: (float) standard deviation for denormalization
     :return: position error(s) and orientation errors(s)
     """
-    posit_err = torch.norm(est_pose[:, 0:2] - gt_pose[:, 0:2], dim=1)
+    est_pose[:, 0:3] = est_pose[:, 0:3] * std + mean
+    gt_pose[:, 0:3] = gt_pose[:, 0:3] * std + mean
+    est_pose = torch.from_numpy(est_pose).float()
+    gt_pose = torch.from_numpy(gt_pose).float()
+    posit_err = torch.norm(est_pose[:, 0:3] - gt_pose[:, 0:3], dim=1, p=2)
     est_pose_q = F.normalize(est_pose[:, 3:], p=2, dim=1)
     gt_pose_q = F.normalize(gt_pose[:, 3:], p=2, dim=1)
     inner_prod = torch.bmm(est_pose_q.view(est_pose_q.shape[0], 1, est_pose_q.shape[1]),
                            gt_pose_q.view(gt_pose_q.shape[0], gt_pose_q.shape[1], 1))
     orient_err = 2 * torch.acos(torch.abs(inner_prod)) * 180 / np.pi
-    # delta_yaw = est_pose[:, 2] - gt_pose[:, 2]
-    # delta_yaw = (delta_yaw + np.pi) % (2 * np.pi) - np.pi  # Normalize to [-π, π]
-    # orient_err = torch.abs(delta_yaw) * 180 / np.pi
     return posit_err, orient_err
