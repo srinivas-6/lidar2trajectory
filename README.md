@@ -44,6 +44,8 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 ## Results 
 
 ### 🚀 Experiment Summary
+A complete run of Training and Test experiments of the project can be found [here](https://wandb.ai/ravuri/trajectory-prediction)
+### Ablation Studies 
 
 | Input      | Lookahead prediction | Model Checkpoint       | Weights & Biases Run        | Median Translation Error (m) | Median Orientation Error (deg) |
 |------------------|--------|-------------------------|------------------------------|------------------------|--------------------------|
@@ -56,6 +58,7 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 * Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) temporal sequences as input
 * A deeper backbone like EfficientNetB3
 
-### Trajectory Plots 
-
-TBD
+### References
+* [Multi-Scene Camera Pose Regression with Transformers](https://github.com/yolish/multi-scene-pose-transformer/tree/main)
+* [PoseNet: A Convolutional Network for Real-Time 6-DOF Camera Relocalization](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Kendall_PoseNet_A_Convolutional_ICCV_2015_paper.pdf)
+* [RobustLoc: Robust Visual Localization in Changing Conditions](https://github.com/sijieaaa/RobustLoc)
