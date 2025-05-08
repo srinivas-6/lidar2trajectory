@@ -45,13 +45,35 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 
 ### 🚀 Experiment Summary
 
-| Input      | Epochs | Model Checkpoint       | Weights & Biases Run        | Median Translation Error (m) | Median Orientation Error (deg) |
+* As lookahead increases, both translation and orientation errors increase — which is expected, as predicting further into the future becomes harder.
+
+* At t (current time), the model performs extremely well, suggesting it's learning to regress small pose deltas effectively.
+
+* At t+3 sec, the median error increases significantly — 7.5 meters and ~5°, indicating that the model struggling with longer-term motion prediction.
+
+A complete run of Training and Test experiments of the project can be found [here](https://wandb.ai/ravuri/trajectory-prediction)
+### Ablation Studies 
+
+| Input      | Lookahead prediction | Model Checkpoint       | Weights & Biases Run        | Median Translation Error (m) | Median Orientation Error (deg) |
 |------------------|--------|-------------------------|------------------------------|------------------------|--------------------------|
-| LiDAR BEV (t)                | 30     | [checkpoint_checkpoint-30.pth ](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing)       | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/tt9mjdu4?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/7x49qygr?nw=nwuserravuri)    | 0.331                   | 0.621         |
-| LiDAR BEV (t)        | 50     | [checkpoint_checkpoint-50.pth](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/pluylpbz?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/hh4zzwdh?nw=nwuserravuri)   | 0.166                  | 0.265                    |
-| LiDAR BEV (t-1, t, t+1)      | TBD     | TBD | TBD | TBD                | TBD                    |
+| LiDAR BEV      | t+3 sec     | [checkpoint_final_t+3.pth](https://drive.google.com/file/d/1AeXCR1ehoYeTKQPjb-EUnZY5KyqzUjWL/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/bdvjoxuw?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/yka7ak4l?nw=nwuserravuri) | 7.50                | 4.73                   |
+| LiDAR BEV         | t+1 sec     | [checkpoint_final_t+1.pth](https://drive.google.com/file/d/1u2fav3xtP3D-kV3d7oWDYlK-StANP_FO/view?usp=sharing) | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/t3vas6y6?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/yjzgr3si?nw=nwuserravuri)   | 2.0                  | 1.1                    |
+| LiDAR BEV                 | t sec    | [checkpoint_final_t.pth ](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing)       | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/tt9mjdu4?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/7x49qygr?nw=nwuserravuri)    | 0.331                   | 0.621         |
+| Temporal LiDAR BEV    | TBD     | TBD | TBD | TBD                | TBD                    |
 
-### TODO
-* Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) input
+### Future Work for Improving Pose Prediction
 
-### Trajectory Plots 
+* Single-frame LiDAR inputs lack motion context, especially critical for long-term predictions.
+
+**Ideas to improve model performance**
+
+* Use sequences of BEV images as input (e.g., 3–5 past frames).
+
+* Apply ConvLSTM, 3D CNNs, or temporal transformers to capture spatiotemporal dynamics.
+
+* Fuse motion flow or ego-velocity vectors if available.
+
+### References
+* [Multi-Scene Camera Pose Regression with Transformers](https://github.com/yolish/multi-scene-pose-transformer/tree/main)
+* [PoseNet: A Convolutional Network for Real-Time 6-DOF Camera Relocalization](https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Kendall_PoseNet_A_Convolutional_ICCV_2015_paper.pdf)
+* [RobustLoc: Robust Visual Localization in Changing Conditions](https://github.com/sijieaaa/RobustLoc)
