@@ -28,18 +28,18 @@ def main(args):
     wandb.init(project='trajectory-prediction', entity=args.entity, config=config)
     # Set the seeds and the device
     use_cuda = torch.cuda.is_available()
-    device_id = 'cpu'
     torch_seed = 0
     numpy_seed = 2
     torch.manual_seed(torch_seed)
     if use_cuda:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-        device_id = config.get('device_id')
+        device_id = config.get('device_id') if config.get('device_id') else 'cpu'
     np.random.seed(numpy_seed)
     device = torch.device(device_id)
     # Create the model
     model = BEVTrajNet(config)
+    print(model)
     model.to(device)
     if args.load_checkpoint:
         model.load_state_dict(torch.load(args.load_checkpoint, map_location=device_id))
@@ -92,9 +92,7 @@ def main(args):
         else:
             checkpoint_prefix = os.path.join(args.data_path, "checkpoint")
 
-        n_total_samples = 0.0
         loss_vals = []
-        sample_count = []
         for epoch in range(n_epochs):
             # Resetting temporal loss used for logging
             running_loss = 0.0
@@ -111,26 +109,29 @@ def main(args):
                 est_pose = output.get('pose')
                 # Compute the loss
                 criterion = pose_loss(est_pose, target)
-                # Backward pass
-                running_loss += criterion.item()
-                loss_vals.append(criterion.item())
-                sample_count.append(n_total_samples)
                 # Back prop
                 criterion.backward()
                 optim.step()
-                wandb.log({'lr': optim.param_groups[0]["lr"]})
-                pose_error, orientation_error = pose_err(est_pose, target)
+                # Backward pass
+                running_loss += criterion.item()
+                loss_vals.append(criterion.item())
+                est_pose = est_pose.detach().cpu().numpy()
+                target = target.detach().cpu().numpy()
+                pose_error, orientation_error = pose_err(est_pose, target, dataset.mean, dataset.std)
                 n_samples += batch_size
                 # Record loss and performance on train set
                 if batch_idx % n_freq_print == 0: 
                     print("[Batch-{}/Epoch-{}] running loss: {:.3f},"
                            "pose error: {:.2f}[m], {:.2f}[deg]".format(batch_idx+1, epoch+1, running_loss / n_samples,
                             pose_error.mean().item(), orientation_error.mean().item()))
-                    wandb.log({'train_loss': running_loss / n_samples})
-                    wandb.log({'pose error': pose_error.mean().item()})
-                    wandb.log({'orient_error': orientation_error.mean().item()})
-                    running_loss = 0.0
-                    n_samples = 0
+                    wandb.log({
+                        'lr': optim.param_groups[0]["lr"],
+                        'train_loss': running_loss / n_samples,
+                        'pose error': pose_error.mean().item(),
+                        'orient_error': orientation_error.mean().item()
+                    })
+                running_loss = 0.0
+                n_samples = 0
              # Save checkpoint
             if (epoch % n_freq_checkpoint) == 0 and epoch > 0:
                 torch.save(model.state_dict(), checkpoint_prefix + '_checkpoint-{}.pth'.format(epoch))
@@ -174,7 +175,8 @@ def main(args):
                 toc = time.time()
                 est_pose = est_pose.detach().cpu().numpy()
                 target = target.detach().cpu().numpy()
-                posit_err, orient_err = pose_err(torch.from_numpy(est_pose), torch.from_numpy(target))
+                posit_err, orient_err = pose_err(est_pose, target, 
+                                                 dataset.mean, dataset.std)
                 preds.append(est_pose)
                 targets.append(target)
                 stats[batch_idx, 0] = posit_err.item()
@@ -212,7 +214,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, required=True, help='Path to the dataset')
     parser.add_argument('--config_file', type=str, required=True, help='Path to the config file')
-    parser.add_argument('--lookahead', type=int, default=1, help='Lookahead parameter')
+    parser.add_argument('--lookahead', type=int, default=30, help='Lookahead parameter')
     parser.add_argument('--batch_size', type=int, default=2, help='Batch size for DataLoader')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for DataLoader')
     parser.add_argument('--visualize', action='store_true', help='Flag to visualize BEV')
