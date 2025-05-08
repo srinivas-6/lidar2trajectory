@@ -44,6 +44,13 @@ The architecture of the model is adapted to learn from LiDAR BEV images. The ori
 ## Results 
 
 ### 🚀 Experiment Summary
+
+* As lookahead increases, both translation and orientation errors increase — which is expected, as predicting further into the future becomes harder.
+
+* At t (current time), the model performs extremely well, suggesting it's learning to regress small pose deltas effectively.
+
+* At t+3 sec, the median error increases significantly — 7.5 meters and ~5°, indicating that the model struggling with longer-term motion prediction.
+
 A complete run of Training and Test experiments of the project can be found [here](https://wandb.ai/ravuri/trajectory-prediction)
 ### Ablation Studies 
 
@@ -54,9 +61,17 @@ A complete run of Training and Test experiments of the project can be found [her
 | LiDAR BEV                 | t sec    | [checkpoint_final_t.pth ](https://drive.google.com/file/d/1gCfgXcvmW7Yc0BPjNiN6QZXG1oQY-oXe/view?usp=sharing)       | [wandb/run-train](https://wandb.ai/ravuri/trajectory-prediction/runs/tt9mjdu4?nw=nwuserravuri) [wandb/run-test](https://wandb.ai/ravuri/trajectory-prediction/runs/7x49qygr?nw=nwuserravuri)    | 0.331                   | 0.621         |
 | Temporal LiDAR BEV    | TBD     | TBD | TBD | TBD                | TBD                    |
 
-### TODO
-* Currently experimenting with multi-frame LiDAR BEV (t-1, t, t+1) temporal sequences as input
-* A deeper backbone like EfficientNetB3
+### Future Work for Improving Pose Prediction
+
+* Single-frame LiDAR inputs lack motion context, especially critical for long-term predictions.
+
+**Ideas to improve model performance**
+
+* Use sequences of BEV images as input (e.g., 3–5 past frames).
+
+* Apply ConvLSTM, 3D CNNs, or temporal transformers to capture spatiotemporal dynamics.
+
+* Fuse motion flow or ego-velocity vectors if available.
 
 ### References
 * [Multi-Scene Camera Pose Regression with Transformers](https://github.com/yolish/multi-scene-pose-transformer/tree/main)
